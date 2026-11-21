@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#0d0b0f" />
+<title>Mafia — Role Cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0d0b0f;
+    --panel: #17141b;
+    --panel-2: #201c25;
+    --line: #2e2934;
+    --text: #f2ede6;
+    --muted: #9a9198;
+    --accent: #c8a45c;
+    --mafia: #c2363a;
+    --doctor: #2f9e6b;
+    --detective: #3f7fd6;
+    --civilian: #b9a98c;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(1200px 600px at 50% -10%, #2a1d24 0%, var(--bg) 60%) fixed;
+    color: var(--text);
+    font-family: Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+  .app {
+    max-width: 460px; margin: 0 auto; min-height: 100%;
+    padding: calc(20px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+    display: flex; flex-direction: column;
+  }
+  header { text-align: center; margin-bottom: 22px; }
+  h1 {
+    font-family: "Playfair Display", serif; font-weight: 900; font-size: 40px;
+    letter-spacing: 6px; margin: 0; color: var(--accent);
+  }
+  .sub { color: var(--muted); font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+  .screen { display: none; flex: 1; flex-direction: column; gap: 16px; }
+  .screen.active { display: flex; animation: fade .25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+  .label { font-size: 12px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; }
+
+  .stepper { display: flex; align-items: center; justify-content: space-between; }
+  .stepper .val { font-family: "Playfair Display", serif; font-size: 56px; font-weight: 900; min-width: 90px; text-align: center; }
+  .stepper.sm .val { font-family: Inter, sans-serif; font-size: 20px; font-weight: 700; min-width: 36px; }
+  .round {
+    width: 56px; height: 56px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--panel-2); color: var(--text); font-size: 28px; cursor: pointer;
+    display: grid; place-items: center; transition: transform .1s, background .2s;
+  }
+  .stepper.sm .round { width: 36px; height: 36px; font-size: 20px; }
+  .round:active { transform: scale(.92); background: #2b2631; }
+  .round:disabled { opacity: .3; }
+
+  .roles { display: grid; gap: 10px; }
+  .role-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--panel-2); }
+  .dot { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; flex: none; }
+  .role-row .name { flex: 1; font-weight: 600; }
+  .role-row .name small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+  .count-static { font-weight: 700; font-size: 20px; min-width: 36px; text-align: center; }
+
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; }
+  .switch { position: relative; width: 48px; height: 28px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: var(--line); border-radius: 28px; transition: .2s; cursor: pointer; }
+  .slider::before { content: ""; position: absolute; width: 22px; height: 22px; left: 3px; top: 3px; border-radius: 50%; background: #fff; transition: .2s; }
+  .switch input:checked + .slider { background: var(--accent); }
+  .switch input:checked + .slider::before { transform: translateX(20px); }
+
+  .names { display: none; gap: 8px; margin-top: 14px; }
+  .names.show { display: grid; }
+  .names input {
+    width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--panel-2); color: var(--text); font: inherit; user-select: text;
+  }
+  .names input:focus { outline: none; border-color: var(--accent); }
+
+  .warn { color: #e8857a; font-size: 13px; text-align: center; min-height: 18px; }
+  .btn {
+    width: 100%; padding: 17px; border-radius: 14px; border: 0; cursor: pointer;
+    font: 700 16px Inter, sans-serif; letter-spacing: .5px;
+    background: var(--accent); color: #1a1408; transition: transform .1s, opacity .2s;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .35; }
+  .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  .btn.danger { background: transparent; color: #e8857a; border: 1px solid #4a2a2c; }
+  .link { background: none; border: 0; color: var(--muted); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 6px; }
+
+  /* Reveal */
+  .progress { display: flex; gap: 4px; }
+  .progress span { flex: 1; height: 4px; border-radius: 4px; background: var(--line); }
+  .progress span.done { background: var(--accent); }
+  .who { text-align: center; }
+  .who .n { color: var(--muted); font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .who .p { font-family: "Playfair Display", serif; font-size: 32px; font-weight: 700; margin-top: 4px; word-break: break-word; }
+
+  .card-wrap { perspective: 1200px; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 360px; }
+  .card {
+    width: min(78vw, 300px); aspect-ratio: 5 / 7.4; position: relative;
+    transform-style: preserve-3d; transition: transform .55s cubic-bezier(.2,.8,.2,1); cursor: pointer;
+  }
+  .card.flipped { transform: rotateY(180deg); }
+  .face {
+    position: absolute; inset: 0; border-radius: 22px; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px;
+    box-shadow: 0 30px 60px rgba(0,0,0,.55);
+  }
+  .back {
+    background:
+      repeating-linear-gradient(45deg, rgba(200,164,92,.08) 0 10px, transparent 10px 20px),
+      linear-gradient(160deg, #2a1f2a, #151118);
+    border: 2px solid var(--accent);
+  }
+  .back .emblem {
+    width: 110px; height: 110px; border-radius: 50%; border: 2px solid var(--accent);
+    display: grid; place-items: center; font-family: "Playfair Display", serif; font-size: 52px; color: var(--accent);
+  }
+  .back .hint { margin-top: 26px; color: var(--muted); font-size: 14px; }
+  .front { transform: rotateY(180deg); border: 2px solid currentColor; background: #141116; }
+  .front .icon { font-size: 86px; line-height: 1; filter: drop-shadow(0 6px 14px rgba(0,0,0,.5)); }
+  .front .role { font-family: "Playfair Display", serif; font-weight: 900; font-size: 38px; letter-spacing: 3px; margin-top: 18px; text-transform: uppercase; }
+  .front .desc { color: #cfc6bf; font-size: 14px; line-height: 1.5; margin-top: 14px; }
+  .front .team { margin-top: 18px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; padding: 6px 12px; border-radius: 99px; border: 1px solid currentColor; }
+  .front .allies { margin-top: 12px; font-size: 13px; color: #e5b4b5; }
+
+  /* Done / narrator */
+  .big-center { text-align: center; padding: 26px 10px; }
+  .big-center .t { font-family: "Playfair Display", serif; font-size: 30px; font-weight: 700; }
+  .big-center p { color: var(--muted); line-height: 1.5; }
+  .list { display: grid; gap: 8px; }
+  .list .item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--panel-2); }
+  .list .item .pn { flex: 1; font-weight: 600; }
+  .list .item .rn { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .hold { position: relative; overflow: hidden; }
+  .hold .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(0,0,0,.18); pointer-events: none; }
+  footer { text-align: center; color: #5c555d; font-size: 12px; margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>MAFIA</h1>
+    <div class="sub">Role card dealer</div>
+  </header>
+
+  <!-- SETUP -->
+  <section class="screen active" id="setup">
+    <div class="panel">
+      <div class="label">Number of players</div>
+      <div class="stepper">
+        <button class="round" id="pMinus" aria-label="Fewer players">−</button>
+        <div class="val" id="pCount">8</div>
+        <button class="round" id="pPlus" aria-label="More players">+</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="toggle-row" style="margin-bottom:12px">
+        <div class="label" style="margin:0">Cards in this game</div>
+        <label class="toggle-row" style="gap:10px;font-size:13px;color:var(--muted)">
+          Custom
+          <span class="switch"><input type="checkbox" id="customToggle" /><span class="slider"></span></span>
+        </label>
+      </div>
+      <div class="roles" id="roleRows"></div>
+      <div class="warn" id="warn"></div>
+    </div>
+
+    <div class="panel">
+      <div class="toggle-row">
+        <div>
+          <div style="font-weight:600">Player names</div>
+          <div style="color:var(--muted);font-size:13px;margin-top:2px">Show who should hold the phone</div>
+        </div>
+        <span class="switch"><input type="checkbox" id="namesToggle" /><span class="slider"></span></span>
+      </div>
+      <div class="names" id="names"></div>
+    </div>
+
+    <button class="btn" id="dealBtn">Shuffle &amp; deal cards</button>
+  </section>
+
+  <!-- REVEAL -->
+  <section class="screen" id="reveal">
+    <div class="progress" id="progress"></div>
+    <div class="who">
+      <div class="n" id="whoN">Player 1 of 8</div>
+      <div class="p" id="whoP">Pass the phone to Player 1</div>
+    </div>
+    <div class="card-wrap">
+      <div class="card" id="card">
+        <div class="face back">
+          <div class="emblem">M</div>
+          <div class="hint">Tap to reveal your role<br/>Make sure nobody is watching</div>
+        </div>
+        <div class="face front" id="front">
+          <div class="icon" id="fIcon"></div>
+          <div class="role" id="fRole"></div>
+          <div class="desc" id="fDesc"></div>
+          <div class="team" id="fTeam"></div>
+          <div class="allies" id="fAllies"></div>
+        </div>
+      </div>
+    </div>
+    <button class="btn" id="nextBtn" disabled>Tap the card first</button>
+    <button class="link" id="abortBtn">Cancel game</button>
+  </section>
+
+  <!-- DONE -->
+  <section class="screen" id="done">
+    <div class="panel big-center">
+      <div style="font-size:54px">🌙</div>
+      <div class="t">Everyone has a role</div>
+      <p>Hand the phone to the narrator.<br/>Night falls — the town goes to sleep.</p>
+    </div>
+    <div class="panel" id="narratorPanel" style="display:none">
+      <div class="label">Narrator sheet</div>
+      <div class="list" id="narratorList"></div>
+    </div>
+    <button class="btn ghost hold" id="narratorBtn"><span class="fill" id="holdFill"></span><span id="narratorTxt">Hold to show narrator sheet</span></button>
+    <button class="btn" id="againBtn">Deal again (same setup)</button>
+    <button class="btn danger" id="newBtn">New game</button>
+  </section>
+
+  <footer>Pass-and-play · cards are shuffled on your device</footer>
+</div>
+
+<script>
+(() => {
+  const MIN = 4, MAX = 20;
+  const ROLES = {
+    mafia:     { name: "Mafia",     icon: "🔪", color: "var(--mafia)",     team: "Mafia",
+                 desc: "Each night, agree with the other mafia on one person to eliminate. By day, blend in." },
+    doctor:    { name: "Doctor",    icon: "💉", color: "var(--doctor)",    team: "Town",
+                 desc: "Each night, choose one person to save. If the mafia targets them, they survive." },
+    detective: { name: "Detective", icon: "🔍", color: "var(--detective)", team: "Town",
+                 desc: "Each night, investigate one person. The narrator tells you if they are mafia." },
+    civilian:  { name: "Civilian",  icon: "🏠", color: "var(--civilian)",  team: "Town",
+                 desc: "You have no night power. Debate, vote wisely and find the mafia." }
+  };
+  const ORDER = ["mafia", "doctor", "detective", "civilian"];
+
+  const state = {
+    players: 8,
+    custom: false,
+    counts: null,          // {mafia, doctor, detective}
+    useNames: false,
+    names: [],
+    deck: [],
+    index: 0,
+    flipped: false,
+    seen: false
+  };
+
+  const $ = id => document.getElementById(id);
+
+  // ---- Distribution rule based on player count ----
+  // Mafia ≈ one per four players (min 1); one Doctor; one Detective; rest Civilians.
+  function autoCounts(n) {
+    return {
+      mafia: Math.max(1, Math.floor(n / 4)),
+      doctor: 1,
+      detective: 1
+    };
+  }
+  function counts() {
+    const c = state.custom && state.counts ? state.counts : autoCounts(state.players);
+    return { ...c, civilian: state.players - c.mafia - c.doctor - c.detective };
+  }
+  function validate(c) {
+    if (c.civilian < 0) return "Too many special roles for this many players.";
+    if (c.mafia < 1) return "You need at least one mafia.";
+    if (c.mafia >= state.players - c.mafia) return "Mafia must be fewer than the town.";
+    return "";
+  }
+
+  // ---- Crypto-strength Fisher–Yates shuffle ----
+  function randInt(max) {
+    const buf = new Uint32Array(1);
+    const limit = Math.floor(0x100000000 / max) * max;
+    let x;
+    do { crypto.getRandomValues(buf); x = buf[0]; } while (x >= limit);
+    return x % max;
+  }
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = randInt(i + 1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // ---- Persistence (light convenience only) ----
+  function save() {
+    try { localStorage.setItem("mafia-setup", JSON.stringify({
+      players: state.players, custom: state.custom, counts: state.counts, useNames: state.useNames, names: state.names
+    })); } catch (e) {}
+  }
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem("mafia-setup") || "null");
+      if (s && s.players >= MIN && s.players <= MAX) Object.assign(state, s);
+    } catch (e) {}
+  }
+
+  // ---- Setup rendering ----
+  function renderSetup() {
+    $("pCount").textContent = state.players;
+    $("pMinus").disabled = state.players <= MIN;
+    $("pPlus").disabled = state.players >= MAX;
+    $("customToggle").checked = state.custom;
+    $("namesToggle").checked = state.useNames;
+
+    const c = counts();
+    $("roleRows").innerHTML = ORDER.map(k => {
+      const r = ROLES[k];
+      const editable = state.custom && k !== "civilian";
+      const min = k === "mafia" ? 1 : 0;
+      const ctrl = editable
+        ? `<div class="stepper sm" style="gap:8px">
+             <button class="round" data-k="${k}" data-d="-1" ${c[k] <= min ? "disabled" : ""}>−</button>
+             <div class="val">${c[k]}</div>
+             <button class="round" data-k="${k}" data-d="1" ${c.civilian <= 0 ? "disabled" : ""}>+</button>
+           </div>`
+        : `<div class="count-static" style="color:${c[k] < 0 ? "#e8857a" : "inherit"}">${c[k]}</div>`;
+      return `<div class="role-row">
+        <div class="dot" style="background:color-mix(in srgb, ${r.color} 22%, transparent)">${r.icon}</div>
+        <div class="name">${r.name}<small>${r.team === "Mafia" ? "Mafia team" : "Town team"}</small></div>
+        ${ctrl}
+      </div>`;
+    }).join("");
+
+    const err = validate(c);
+    $("warn").textContent = err;
+    $("dealBtn").disabled = !!err;
+
+    renderNames();
+  }
+
+  function renderNames() {
+    const box = $("names");
+    box.classList.toggle("show", state.useNames);
+    if (!state.useNames) return;
+    while (state.names.length < state.players) state.names.push("");
+    const existing = box.querySelectorAll("input").length;
+    if (existing !== state.players) {
+      box.innerHTML = Array.from({ length: state.players }, (_, i) =>
+        `<input type="text" maxlength="24" placeholder="Player ${i + 1}" data-i="${i}" value="${escapeHtml(state.names[i] || "")}" />`
+      ).join("");
+    }
+  }
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+  }
+  function playerName(i) {
+    return (state.useNames && state.names[i] && state.names[i].trim()) || `Player ${i + 1}`;
+  }
+
+  $("pMinus").onclick = () => changePlayers(-1);
+  $("pPlus").onclick = () => changePlayers(1);
+  function changePlayers(d) {
+    state.players = Math.min(MAX, Math.max(MIN, state.players + d));
+    if (state.custom) {
+      // keep custom counts valid when shrinking
+      const c = state.counts;
+      while (c.mafia + c.doctor + c.detective > state.players) {
+        if (c.detective > 0) c.detective--; else if (c.doctor > 0) c.doctor--; else c.mafia--;
+      }
+    }
+    save(); renderSetup();
+  }
+  $("customToggle").onchange = e => {
+    state.custom = e.target.checked;
+    if (state.custom) state.counts = autoCounts(state.players);
+    save(); renderSetup();
+  };
+  $("roleRows").onclick = e => {
+    const b = e.target.closest("button[data-k]");
+    if (!b || b.disabled) return;
+    state.counts[b.dataset.k] += Number(b.dataset.d);
+    save(); renderSetup();
+  };
+  $("namesToggle").onchange = e => { state.useNames = e.target.checked; save(); renderSetup(); };
+  $("names").oninput = e => {
+    if (e.target.dataset.i != null) { state.names[+e.target.dataset.i] = e.target.value; save(); }
+  };
+
+  // ---- Deal ----
+  function deal() {
+    const c = counts();
+    if (validate(c)) return;
+    const deck = [];
+    ORDER.forEach(k => { for (let i = 0; i < c[k]; i++) deck.push(k); });
+    state.deck = shuffle(deck);
+    state.index = 0;
+    show("reveal");
+    renderReveal();
+  }
+  $("dealBtn").onclick = deal;
+  $("againBtn").onclick = deal;
+
+  function renderReveal() {
+    const i = state.index, n = state.deck.length;
+    state.flipped = false; state.seen = false;
+    $("card").classList.remove("flipped");
+    $("progress").innerHTML = Array.from({ length: n }, (_, k) => `<span class="${k < i ? "done" : ""}"></span>`).join("");
+    $("whoN").textContent = `Player ${i + 1} of ${n}`;
+    $("whoP").textContent = playerName(i);
+    $("nextBtn").disabled = true;
+    $("nextBtn").textContent = "Tap the card first";
+
+    // Fill front after the card has turned away, so the old role never flashes
+    setTimeout(() => {
+      const k = state.deck[i], r = ROLES[k];
+      $("front").style.color = r.color;
+      $("fIcon").textContent = r.icon;
+      $("fRole").textContent = r.name;
+      $("fDesc").textContent = r.desc;
+      $("fTeam").textContent = `${r.team} team`;
+      let allies = "";
+      if (k === "mafia" && state.useNames) {
+        const others = state.deck.map((x, j) => x === "mafia" && j !== i ? playerName(j) : null).filter(Boolean);
+        if (others.length) allies = "Your partners: " + others.join(", ");
+      }
+      $("fAllies").textContent = allies;
+    }, state.index === 0 ? 0 : 300);
+  }
+
+  $("card").onclick = () => {
+    state.flipped = !state.flipped;
+    $("card").classList.toggle("flipped", state.flipped);
+    if (state.flipped && !state.seen) {
+      state.seen = true;
+      $("nextBtn").disabled = false;
+    }
+    if (state.seen) {
+      const last = state.index === state.deck.length - 1;
+      $("nextBtn").textContent = last ? "Hide & finish" : `Hide & pass to ${playerName(state.index + 1)}`;
+    }
+    if (navigator.vibrate) navigator.vibrate(15);
+  };
+
+  $("nextBtn").onclick = () => {
+    $("card").classList.remove("flipped");
+    if (state.index < state.deck.length - 1) {
+      state.index++;
+      renderReveal();
+    } else {
+      finish();
+    }
+  };
+
+  $("abortBtn").onclick = () => {
+    if (confirmTwice($("abortBtn"), "Tap again to cancel")) { show("setup"); renderSetup(); }
+  };
+  function confirmTwice(el, msg) {
+    if (el.dataset.armed) { delete el.dataset.armed; el.textContent = el.dataset.orig; return true; }
+    el.dataset.orig = el.textContent; el.dataset.armed = "1"; el.textContent = msg;
+    setTimeout(() => { if (el.dataset.armed) { delete el.dataset.armed; el.textContent = el.dataset.orig; } }, 2500);
+    return false;
+  }
+
+  // ---- Done / narrator ----
+  function finish() {
+    $("narratorPanel").style.display = "none";
+    $("narratorTxt").textContent = "Hold to show narrator sheet";
+    $("narratorList").innerHTML = state.deck.map((k, i) => {
+      const r = ROLES[k];
+      return `<div class="item"><span>${r.icon}</span><span class="pn">${escapeHtml(playerName(i))}</span><span class="rn" style="color:${r.color}">${r.name}</span></div>`;
+    }).join("");
+    show("done");
+  }
+
+  // Press-and-hold (1s) so a player can't peek with an accidental tap
+  (function setupHold() {
+    const btn = $("narratorBtn"), fill = $("holdFill");
+    let t0 = 0, raf = 0;
+    const HOLD = 1000;
+    function step() {
+      const p = Math.min(1, (performance.now() - t0) / HOLD);
+      fill.style.width = (p * 100) + "%";
+      if (p >= 1) { stop(); toggleSheet(); return; }
+      raf = requestAnimationFrame(step);
+    }
+    function start(e) {
+      e.preventDefault();
+      if ($("narratorPanel").style.display !== "none") { toggleSheet(); return; }
+      t0 = performance.now(); raf = requestAnimationFrame(step);
+    }
+    function stop() { cancelAnimationFrame(raf); fill.style.width = "0"; }
+    btn.addEventListener("pointerdown", start);
+    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => btn.addEventListener(ev, stop));
+    function toggleSheet() {
+      const open = $("narratorPanel").style.display === "none";
+      $("narratorPanel").style.display = open ? "block" : "none";
+      $("narratorTxt").textContent = open ? "Hide narrator sheet" : "Hold to show narrator sheet";
+    }
+  })();
+
+  $("newBtn").onclick = () => { show("setup"); renderSetup(); };
+
+  function show(id) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === id));
+    window.scrollTo(0, 0);
+  }
+
+  load();
+  if (state.custom && !state.counts) state.counts = autoCounts(state.players);
+  renderSetup();
+})();
+</script>
+</body>
+</html>
